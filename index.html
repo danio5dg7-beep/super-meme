@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Conto Giocatori</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f6fb;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:11px 15px;font-weight:650;background:#2563eb;color:#fff}button.secondary{background:#e8edf7;color:#26344d}button.danger{background:#fee2e2;color:#991b1b}button:disabled{opacity:.55;cursor:not-allowed}
+    .wrap{max-width:1000px;margin:auto;padding:24px 16px 50px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.brand{font-size:22px;font-weight:800;letter-spacing:-.5px}.muted{color:#667085}.panel{background:#fff;border:1px solid #e7eaf1;border-radius:16px;padding:20px;box-shadow:0 5px 20px #17203308;margin-bottom:16px}
+    h1,h2,h3,p{margin-top:0}h1{font-size:28px;margin-bottom:5px}h2{font-size:18px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stat{padding:18px;border-radius:14px;background:#f8fafc}.stat small{display:block;color:#667085;margin-bottom:8px}.amount{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}.positive{color:#16834a}.negative{color:#dc3545}.people{display:grid;gap:10px}.person{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid #edf0f5;border-radius:12px}.person-name{font-weight:750}.person-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.person-balance{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.field{display:grid;gap:6px;margin-bottom:12px;flex:1;min-width:180px}label{font-size:13px;font-weight:700;color:#475467}input{width:100%;border:1px solid #d0d5dd;border-radius:10px;padding:12px;background:#fff;color:#172033}input:focus{outline:3px solid #dbeafe;border-color:#2563eb}.hidden{display:none!important}.tabs{display:flex;gap:8px;margin-bottom:16px}.tabs button{background:#e8edf7;color:#26344d}.tabs button.active{background:#172033;color:#fff}.movement{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #edf0f5}.movement:last-child{border-bottom:0}.movement-title{font-weight:700}.small{font-size:12px}.notice{padding:12px 14px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-size:13px;margin-bottom:14px}.error{background:#fef2f2;color:#b42318}.empty{padding:22px;text-align:center;color:#667085}.auth{max-width:440px;margin:8vh auto}.auth h1{margin-bottom:8px}.footer{text-align:center;color:#98a2b3;font-size:12px;margin-top:24px}
+    @media(max-width:620px){.wrap{padding:16px 12px 36px}.panel{padding:16px}.grid{grid-template-columns:1fr}.person{align-items:flex-start;flex-direction:column}.person-actions{justify-content:flex-start}.person-balance{text-align:left}.top{align-items:flex-start}.amount{font-size:24px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section id="authView" class="panel auth">
+      <div class="brand">🎯 Conto Giocatori</div>
+      <h1>Accedi</h1>
+      <p class="muted">Accedi o crea il tuo account per gestire persone e movimenti.</p>
+      <div id="authMessage" class="notice hidden"></div>
+      <form id="authForm">
+        <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" minlength="6" required></div>
+        <div class="row">
+          <button type="submit" id="loginBtn">Accedi</button>
+          <button type="button" class="secondary" id="signupBtn">Crea account</button>
+        </div>
+      </form>
+      <p class="small muted" style="margin:14px 0 0">Se la conferma email è attiva, controlla la posta dopo la registrazione.</p>
+    </section>
+
+    <section id="appView" class="hidden">
+      <header class="top">
+        <div><div class="brand">🎯 Conto Giocatori</div><div class="muted small">Riepilogo personale</div></div>
+        <button class="secondary" id="logoutBtn">Esci</button>
+      </header>
+      <div id="appMessage" class="notice hidden"></div>
+      <section class="panel">
+        <h1>La tua situazione</h1>
+        <p class="muted">Il saldo è calcolato come soldi giocati meno soldi vinti.</p>
+        <div class="grid">
+          <div class="stat"><small>Totale da ricevere</small><div class="amount positive" id="totalReceive">€ 0,00</div></div>
+          <div class="stat"><small>Totale da dare</small><div class="amount negative" id="totalPay">€ 0,00</div></div>
+        </div>
+      </section>
+      <nav class="tabs">
+        <button class="active" data-tab="peopleTab">Persone</button>
+        <button data-tab="detailTab" id="detailTabButton" disabled>Movimenti</button>
+      </nav>
+      <section id="peopleTab" class="panel">
+        <h2>Lista persone</h2>
+        <form id="personForm" class="row">
+          <div class="field" style="margin:0"><label for="personName">Nome della persona</label><input id="personName" maxlength="80" placeholder="Es. Marco" required></div>
+          <button type="submit">Aggiungi persona</button>
+        </form>
+        <div style="height:14px"></div>
+        <div id="peopleList" class="people"><div class="empty">Caricamento...</div></div>
+      </section>
+      <section id="detailTab" class="panel hidden">
+        <div class="row" style="justify-content:space-between">
+          <div><h2 id="detailName" style="margin-bottom:4px">Movimenti</h2><div class="muted small" id="detailBalance"></div></div>
+          <button class="secondary" id="backPeople">Torna alle persone</button>
+        </div>
+        <div class="grid" style="margin:16px 0">
+          <div class="stat"><small>Soldi giocati</small><div class="amount" id="detailPlayed">€ 0,00</div></div>
+          <div class="stat"><small>Soldi vinti</small><div class="amount" id="detailWon">€ 0,00</div></div>
+        </div>
+        <h2>Registra un movimento</h2>
+        <form id="movementForm">
+          <div class="row">
+            <div class="field"><label for="movementType">Tipo</label><select id="movementType" style="padding:12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff"><option value="giocato">Soldi giocati</option><option value="vinto">Soldi vinti</option></select></div>
+            <div class="field"><label for="movementAmount">Importo (€)</label><input id="movementAmount" type="number" min="0.01" step="0.01" placeholder="0,00" required></div>
+          </div>
+          <button type="submit">Salva movimento</button>
+        </form>
+        <div style="height:20px"></div>
+        <h2>Storico</h2>
+        <div id="movementList"><div class="empty">Nessun movimento registrato.</div></div>
+      </section>
+      <div class="footer">I dati vengono salvati nel tuo progetto Supabase.</div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  // INSERISCI QUI I TUOI DATI PUBBLICI DI SUPABASE
+  const SUPABASE_URL = "INCOLLA_QUI_IL_PROJECT_URL";
+  const SUPABASE_KEY = "INCOLLA_QUI_LA_PUBLISHABLE_O_ANON_KEY";
+
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => new Intl.NumberFormat("it-IT", {style:"currency", currency:"EUR"}).format(Number(n || 0));
+  const date = (value) => new Intl.DateTimeFormat("it-IT", {dateStyle:"medium", timeStyle:"short"}).format(new Date(value));
+  let db, currentUser, people = [], selectedPerson = null;
+
+  function message(id, text, isError=false) {
+    const el=$(id); el.textContent=text; el.classList.remove("hidden","error");
+    if(isError) el.classList.add("error");
+  }
+  function clearMessage(id){$(id).classList.add("hidden");}
+  function showAuth(){ $("authView").classList.remove("hidden"); $("appView").classList.add("hidden"); }
+  function showApp(){ $("authView").classList.add("hidden"); $("appView").classList.remove("hidden"); }
+  function escapeHtml(value){return String(value).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+  async function loadPeople(){
+    const {data,error}=await db.from("persone").select("id,nome,creato_il").order("nome");
+    if(error) throw error;
+    people=data||[];
+    const totals={};
+    if(people.length){
+      const {data:rows,error:e}=await db.from("movimenti").select("persona_id,tipo,importo");
+      if(e) throw e;
+      for(const p of people) totals[p.id]={played:0,won:0};
+      for(const m of rows||[]){
+        if(!totals[m.persona_id]) continue;
+        if(m.tipo==="giocato") totals[m.persona_id].played+=Number(m.importo);
+        else totals[m.persona_id].won+=Number(m.importo);
+      }
+    }
+    let receive=0,pay=0;
+    for(const p of people){
+      const t=totals[p.id]||{played:0,won:0}; const balance=t.played-t.won;
+      if(balance>=0) receive+=balance; else pay+=Math.abs(balance);
+    }
+    $("totalReceive").textContent=money(receive); $("totalPay").textContent=money(pay);
+    $("peopleList").innerHTML=people.length?people.map(p=>{
+      const t=totals[p.id]||{played:0,won:0}; const b=t.played-t.won;
+      return `<div class="person">
+        <div><div class="person-name">${escapeHtml(p.nome)}</div><div class="small muted">Giocati ${money(t.played)} · Vinti ${money(t.won)}</div></div>
+        <div class="row">
+          <div class="person-balance ${b>=0?"positive":"negative"}">${b>=0?"+":"−"} ${money(Math.abs(b))}<div class="small muted">${b>=0?"Deve dare a te":"Devi dare a lui/lei"}</div></div>
+          <div class="person-actions"><button data-open="${p.id}">Apri</button><button class="secondary" data-rename="${p.id}">Rinomina</button><button class="danger" data-delete="${p.id}">Elimina</button></div>
+        </div></div>`;
+    }).join(""):'<div class="empty">Non hai ancora aggiunto persone.</div>';
+    $("peopleList").querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openPerson(b.dataset.open)));
+    $("peopleList").querySelectorAll("[data-rename]").forEach(b=>b.addEventListener("click",()=>renamePerson(b.dataset.rename)));
+    $("peopleList").querySelectorAll("[data-delete]").forEach(b=>b.addEventListener("click",()=>deletePerson(b.dataset.delete)));
+  }
+
+  async function openPerson(id){
+    selectedPerson=people.find(p=>p.id===id); if(!selectedPerson)return;
+    $("detailTabButton").disabled=false;
+    $("detailName").textContent=selectedPerson.nome;
+    document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab==="detailTab"));
+    $("peopleTab").classList.add("hidden"); $("detailTab").classList.remove("hidden");
+    await loadMovements();
+  }
+  async function loadMovements(){
+    const {data,error}=await db.from("movimenti").select("id,tipo,importo,data").eq("persona_id",selectedPerson.id).order("data",{ascending:false});
+    if(error)throw error;
+    let played=0,won=0;
+    for(const m of data||[]){if(m.tipo==="giocato")played+=Number(m.importo);else won+=Number(m.importo);}
+    const balance=played-won;
+    $("detailPlayed").textContent=money(played); $("detailWon").textContent=money(won);
+    $("detailBalance").textContent=`Saldo: ${balance>=0?"+ ":"− "}${money(Math.abs(balance))} · ${balance>=0?"deve dare a te":"devi dare a lui/lei"}`;
+    $("detailBalance").className=`small ${balance>=0?"positive":"negative"}`;
+    $("movementList").innerHTML=data?.length?data.map(m=>`<div class="movement">
+      <div><div class="movement-title">${m.tipo==="giocato"?"Soldi giocati":"Soldi vinti"}</div><div class="small muted">${date(m.data)}</div></div>
+      <div class="row"><strong class="${m.tipo==="giocato"?"positive":"negative"}">${m.tipo==="giocato"?"+":"−"} ${money(m.importo)}</strong><button class="danger" data-move-delete="${m.id}">Elimina</button></div>
+    </div>`).join(""):'<div class="empty">Nessun movimento registrato.</div>';
+    $("movementList").querySelectorAll("[data-move-delete]").forEach(b=>b.addEventListener("click",()=>deleteMovement(b.dataset.moveDelete)));
+  }
+  async function renamePerson(id){
+    const p=people.find(x=>x.id===id); const name=prompt("Nuovo nome:",p?.nome||"");
+    if(name===null)return; if(!name.trim()){alert("Inserisci un nome valido.");return;}
+    const {error}=await db.from("persone").update({nome:name.trim()}).eq("id",id);
+    if(error)throw error; await loadPeople();
+    if(selectedPerson?.id===id){selectedPerson.nome=name.trim();$("detailName").textContent=selectedPerson.nome;}
+  }
+  async function deletePerson(id){
+    const p=people.find(x=>x.id===id); if(!confirm(`Eliminare ${p?.nome} e tutti i suoi movimenti?`))return;
+    const {error}=await db.from("persone").delete().eq("id",id); if(error)throw error;
+    if(selectedPerson?.id===id){selectedPerson=null;$("detailTab").classList.add("hidden");$("peopleTab").classList.remove("hidden");$("detailTabButton").disabled=true;}
+    await loadPeople();
+  }
+  async function deleteMovement(id){
+    if(!confirm("Vuoi eliminare questo movimento?"))return;
+    const {error}=await db.from("movimenti").delete().eq("id",id); if(error)throw error;
+    await loadMovements(); await loadPeople();
+  }
+
+  async function startApp(){
+    const {data:{session}}=await db.auth.getSession();
+    if(session){currentUser=session.user;showApp();await loadPeople();}else showAuth();
+    db.auth.onAuthStateChange(async(_event,session)=>{
+      if(session){currentUser=session.user;showApp();try{await loadPeople();}catch(e){message("appMessage",e.message,true);}}
+      else{currentUser=null;showAuth();}
+    });
+  }
+
+  $("authForm").addEventListener("submit",async e=>{
+    e.preventDefault();clearMessage("authMessage");$("loginBtn").disabled=true;
+    try{
+      const {error}=await db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+      if(error)throw error;
+    }catch(err){message("authMessage",err.message,true);}
+    finally{$("loginBtn").disabled=false;}
+  });
+  $("signupBtn").addEventListener("click",async()=>{
+    clearMessage("authMessage");
+    try{
+      const {data,error}=await db.auth.signUp({email:$("email").value.trim(),password:$("password").value});
+      if(error)throw error;
+      if(!data.session)message("authMessage","Account creato. Controlla la tua email per confermare la registrazione.");
+      else message("authMessage","Account creato correttamente.");
+    }catch(err){message("authMessage",err.message,true);}
+  });
+  $("logoutBtn").addEventListener("click",async()=>{await db.auth.signOut();});
+  $("personForm").addEventListener("submit",async e=>{
+    e.preventDefault();clearMessage("appMessage");const name=$("personName").value.trim();if(!name)return;
+    try{const {error}=await db.from("persone").insert({nome:name});if(error)throw error;$("personName").value="";await loadPeople();}
+    catch(err){message("appMessage",err.message,true);}
+  });
+  $("movementForm").addEventListener("submit",async e=>{
+    e.preventDefault();clearMessage("appMessage");const amount=Number($("movementAmount").value);
+    if(!selectedPerson||!Number.isFinite(amount)||amount<=0){message("appMessage","Inserisci un importo maggiore di zero.",true);return;}
+    try{
+      // La data viene impostata automaticamente dal database (default now()).
+      const {error}=await db.from("movimenti").insert({persona_id:selectedPerson.id,tipo:$("movementType").value,importo:amount});
+      if(error)throw error;$("movementAmount").value="";await loadMovements();await loadPeople();
+    }catch(err){message("appMessage",err.message,true);}
+  });
+  document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+    if(b.disabled)return;
+    document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x===b));
+    $("peopleTab").classList.toggle("hidden",b.dataset.tab!=="peopleTab");
+    $("detailTab").classList.toggle("hidden",b.dataset.tab!=="detailTab");
+  }));
+  $("backPeople").addEventListener("click",()=>{
+    $("detailTab").classList.add("hidden");$("peopleTab").classList.remove("hidden");
+    document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab==="peopleTab"));
+  });
+
+  if(SUPABASE_URL.startsWith("INCOLLA_")||SUPABASE_KEY.startsWith("INCOLLA_")){
+    showAuth();message("authMessage","Prima di usare l'app, inserisci Project URL e Publishable/anon key nel codice, nelle due costanti SUPABASE_URL e SUPABASE_KEY.",true);
+    return;
+  }
+  if(!window.supabase){message("authMessage","Impossibile caricare la libreria Supabase. Controlla la connessione internet.",true);return;}
+  db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  startApp().catch(err=>{showAuth();message("authMessage",err.message,true);});
+})();
+</script>
+</body>
+</html>
